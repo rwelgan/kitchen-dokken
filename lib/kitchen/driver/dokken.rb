@@ -113,6 +113,21 @@ module Kitchen
         config[:api_retries]
       end
 
+      def creds
+        opts = { 'username' => ENV['DOCKER_USERNAME'],
+                 'password' => ENV['DOCKER_PASSWORD'],
+                 'email' => ENV['EMAIL_ADDRESS'],
+                 'serveraddress' => ENV['REGISTRY_URL'] }
+        unless opts.values.any? &:nil?
+          begin
+            ::Docker.authenticate!(opts)
+          rescue Docker::Error::AuthenticationError
+            debug 'driver - rescue Docker::Error::AuthenticationError'
+          end
+        end
+        ::Docker.creds
+      end
+
       def docker_connection
         opts = ::Docker.options
         opts[:read_timeout] = config[:read_timeout]
@@ -531,7 +546,7 @@ module Kitchen
             original_image = Docker::Image.get("#{repo(image)}:#{tag(image)}", {}, docker_connection)
           end
 
-          new_image = Docker::Image.create({ 'fromImage' => "#{repo(image)}:#{tag(image)}" }, docker_connection)
+          new_image = Docker::Image.create({ 'fromImage' => "#{repo(image)}:#{tag(image)}" }, creds, docker_connection)
 
           !(original_image && original_image.id.start_with?(new_image.id))
         end
